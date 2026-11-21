@@ -1,0 +1,22 @@
+id = "enhancedvisuals"
+name = "EnhancedVisuals"
+version = "1.0.0"
+description = "Blood with the original textures when you are hurt, a heartbeat and a red pulse at low health, explosion dust and ringing, and potion, fire, freezing, drowning and starving overlays, plus rain drops."
+authors = ["CreativeMD", "AriaFreeze"]
+credits = "NeoForge version by Sonicjumper. Ported to Horizon by chase0023. \"Feel the pain!\" is the original's."
+license = "LGPL-3.0-only"
+license_url = "https://www.gnu.org/licenses/lgpl-3.0.html"
+homepage = "https://github.com/chase0023/enhanced-visuals-port"
+issues = "https://github.com/chase0023/enhanced-visuals-port/issues"
+api = "0.2"
+# Visuals only, so the effects run where they are drawn: the client. In single player the
+# integrated server is part of the client installation, which is how the damage type, an
+# explosion's centre and a splash potion's position reach the client tick.
+side = "client"
+capabilities = ["registries"]
+
+[native]
+game = "26.3"
+# Nightly 2026-11-20, the newest build with a signed SDK and the one the launcher installs.
+horizon = "0a875da91dbb0fdcb7ba8c42c11341aa229af51a"
+mixins = "e59da9094f0c2fdda6c627fe9eff22dec6a906f0"

@@ -1,0 +1,21 @@
+schema = 1
+id = "native_enhancedvisuals"
+name = "Enhanced Visuals"
+version = "1.0.0"
+api = "0.2"
+description = "The blur and desaturation of Enhanced Visuals' explosions, heartbeat, splashes and hunger, drawn by the game's post chain instead of a flat wash. Meant to be picked with the Enhanced Visuals mod, whose frame slots set its strength: at rest it changes nothing."
+
+# Two halves of a separable blur, as the original's own chain is (three box rounds a half):
+# the first writes a target of its own, the second reads it, blurs across, then applies the
+# original's saturation convolve. The mod's `frame.mods[0]` sets the radius and the saturation.
+[[post]]
+file = "post/horizontal.wgsl"
+name = "Blur across"
+output = "blurred"
+
+[[post]]
+file = "post/vertical.wgsl"
+name = "Blur down, then saturation"
+
+[budget]
+gpu_ms = 0.8

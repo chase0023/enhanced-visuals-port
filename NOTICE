@@ -1,0 +1,24 @@
+EnhancedVisuals for Horizon
+===========================
+
+This is an unofficial port of EnhancedVisuals 1.8.35 (Fabric, Minecraft 26.3) to the Horizon
+client, which is Minecraft: Java Edition rewritten in Rust.
+
+Original mod: EnhancedVisuals
+Copyright (C) CreativeMD, AriaFreeze
+NeoForge version by Sonicjumper
+https://github.com/CreativeMD/EnhancedVisuals
+https://modrinth.com/mod/enhancedvisuals
+
+Licensed under the GNU Lesser General Public License, version 3 only (LGPL-3.0-only).
+The full licence text is in LICENSE.
+
+Redistributed from the original jar under the same licence:
+
+  * every texture under assets/enhancedvisuals/textures/gui/ev/, which is
+    assets/enhancedvisuals/visuals/{particle,overlay}/composited into rotation grids
+    (see tools/gen_assets.py); the overlays are downscaled to 256x256,
+  * assets/enhancedvisuals/sounds/*.ogg and assets/enhancedvisuals/sounds.json, unchanged,
+  * icon.png, the original's mod icon.
+
+The Rust code in src/ and the port's behaviour notes are part of this port.

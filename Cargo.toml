@@ -1,0 +1,17 @@
+[package]
+name = "enhancedvisuals"
+version = "1.0.0"
+edition = "2021"
+publish = false
+description = "EnhancedVisuals for Horizon: blood, heartbeat, explosion, potion and elemental overlays"
+
+[lib]
+name = "enhancedvisuals"
+path = "src/lib.rs"
+
+[dependencies]
+# The launcher's SDK slice for the build pinned in horizon-mod.toml. `cargo horizon-mod` and
+# `horizon-launcher native-build` fetch `.horizon/sdk/` before compiling against it.
+horizon-mod-api = { path = ".horizon/sdk/api/crates/horizon-mod-api" }
+
+[workspace]
