@@ -1,6 +1,6 @@
 id = "enhancedvisuals"
 name = "EnhancedVisuals"
-version = "1.0.0"
+version = "1.0.1"
 description = "Blood with the original textures when you are hurt, a heartbeat and a red pulse at low health, explosion dust and ringing, and potion, fire, freezing, drowning and starving overlays, plus rain drops."
 authors = ["CreativeMD", "AriaFreeze"]
 credits = "NeoForge version by Sonicjumper. Ported to Horizon by chase0023. \"Feel the pain!\" is the original's."
@@ -17,6 +17,7 @@ capabilities = ["registries"]
 
 [native]
 game = "26.3"
-# Nightly 2026-11-20, the newest build with a signed SDK and the one the launcher installs.
-horizon = "0a875da91dbb0fdcb7ba8c42c11341aa229af51a"
+# The Nov 21 build, the one the launcher installs; 1.0.0 was built against Nov 20 and the
+# launcher turned it off once `Overlay` and `Hit` changed.
+horizon = "8f83e5c85ae3b9a117f742e8d91170c5c9080a06"
 mixins = "e59da9094f0c2fdda6c627fe9eff22dec6a906f0"

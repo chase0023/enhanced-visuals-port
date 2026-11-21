@@ -163,6 +163,15 @@ a build with a published `sdk-<build>` release can be built against.
   splats), a creeper at close range (dust, ringing, muffled sound), a splash potion at
   your feet (potion overlay), rain (drops), and every row on the mod's settings page.
 
+## Two names that had to change
+
+This mod's own `Overlay` and `Hit` were named exactly like two types in the game's API. A package records the
+API items it uses, and the record is made by name: the two local types were recorded as uses of the API's
+ones, so when the game changed `Overlay` and `Hit` in its Nov 21 build, the launcher turned the mod off
+("enhancedvisuals was left out of this build") although it never touched either. They are now
+`ScreenOverlay` and `PendingHit`, and the package's record claims only what it uses — `GuiLayer`, which it
+really builds. Worth knowing if you add types here: never reuse an API type's name.
+
 ## What is not ported, and why
 
 | Missing | Reason |

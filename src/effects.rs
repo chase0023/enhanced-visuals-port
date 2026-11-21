@@ -483,7 +483,7 @@ impl Particle {
 
 /// One full-screen overlay, fading from `peak` to nothing over `life` ticks.
 #[derive(Clone, Debug, PartialEq)]
-pub struct Overlay {
+pub struct ScreenOverlay {
     pub kind: OverlayKind,
     pub age: f32,
     pub life: f32,
@@ -492,7 +492,7 @@ pub struct Overlay {
     pub rgb: u32,
 }
 
-impl Overlay {
+impl ScreenOverlay {
     pub fn opacity(&self) -> f32 {
         if self.life <= 0.0 {
             return 0.0;
@@ -504,7 +504,7 @@ impl Overlay {
 /// A hit the world announced, waiting for the client tick that sees the health drop: its
 /// damage type as the visuals for it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Hit {
+pub struct PendingHit {
     pub kind: Kind,
     pub overlay: Option<OverlayKind>,
     /// The starvation tunnel is the one hit the original draws without splashes.
@@ -601,12 +601,12 @@ pub fn blood_count(health: f32, damage: f32, amount_percent: u32) -> usize {
 pub struct State {
     pub options: Options,
     pub visuals: Vec<Particle>,
-    pub overlay: Option<Overlay>,
+    pub overlay: Option<ScreenOverlay>,
     pub health: f32,
     pub max_health: f32,
     last_health: Option<f32>,
     pub hb: Heartbeat,
-    hits: Vec<Hit>,
+    hits: Vec<PendingHit>,
     pub rng: Rng,
     pub tick: u64,
     /// Sounds the server side asked for; the next client tick plays them.
@@ -684,7 +684,7 @@ impl State {
         if self.hits.len() >= 8 {
             self.hits.remove(0);
         }
-        self.hits.push(Hit {
+        self.hits.push(PendingHit {
             kind,
             overlay,
             splashes: overlay != Some(OverlayKind::Tunnel),
@@ -693,8 +693,8 @@ impl State {
 
     /// The hit to draw for a health drop: the announced one, else the original's default
     /// splatter (a client joining someone else's server never hears the world's side).
-    fn take_hit(&mut self) -> Hit {
-        self.hits.pop().unwrap_or(Hit {
+    fn take_hit(&mut self) -> PendingHit {
+        self.hits.pop().unwrap_or(PendingHit {
             kind: Kind::Splatter,
             overlay: None,
             splashes: true,
@@ -897,7 +897,7 @@ pub fn client_tick(state: &mut State, input: &Input) -> Vec<Sound> {
                 let peak =
                     Heartbeat::peak(input.health, state.max_health, state.options.pulse_strength);
                 if peak > 0.001 {
-                    state.overlay = Some(Overlay {
+                    state.overlay = Some(ScreenOverlay {
                         kind: OverlayKind::LowHealth,
                         age: 0.0,
                         life: HB_OVERLAY_TICKS as f32,
@@ -982,7 +982,7 @@ pub fn client_tick(state: &mut State, input: &Input) -> Vec<Sound> {
 /// Adds the splatters of one hit, the original's counts and placement. Blood's count comes from
 /// the damage and the health left; every other kind has its own splash count and lifetime, and
 /// the whole batch shares one lifetime, as the original's `addParticlesFadeOut` does.
-fn spawn_damage(state: &mut State, hit: Hit, damage: f32, health_after: f32) {
+fn spawn_damage(state: &mut State, hit: PendingHit, damage: f32, health_after: f32) {
     if hit.splashes {
         if hit.kind.is_blood() {
             let count = blood_count(health_after, damage, state.options.amount)
@@ -1002,7 +1002,7 @@ fn spawn_damage(state: &mut State, hit: Hit, damage: f32, health_after: f32) {
             OverlayKind::LowHealth => (HB_OVERLAY_TICKS as f32, 0.5, 0xFF_FFFF),
             _ => (10.0, 0.7, 0xFF_FFFF),
         };
-        state.overlay = Some(Overlay {
+        state.overlay = Some(ScreenOverlay {
             kind,
             age: 0.0,
             life,
@@ -1013,7 +1013,7 @@ fn spawn_damage(state: &mut State, hit: Hit, damage: f32, health_after: f32) {
         // `hitEffectIntensity` (0 by default): peak, over `hitDuration` 1 to 10 ticks.
         let intensity = state.options.hit_flash_intensity as f32 / 100.0;
         if intensity > 0.0 {
-            state.overlay = Some(Overlay {
+            state.overlay = Some(ScreenOverlay {
                 kind: OverlayKind::Damaged,
                 age: 0.0,
                 life: state.rng.range_i32(1, 10) as f32,
@@ -1118,7 +1118,7 @@ pub fn potion(state: &mut State, distance: f32, rgb: u32) {
         return;
     }
     let life = state.rng.range_i32(30, 60) as f32;
-    state.overlay = Some(Overlay {
+    state.overlay = Some(ScreenOverlay {
         kind: OverlayKind::Potion,
         age: 0.0,
         life,
@@ -1679,7 +1679,7 @@ mod tests {
     #[test]
     fn the_overlay_is_drawn_below_the_splatters_and_covers_the_screen() {
         let mut state = state_with(Options::default());
-        state.overlay = Some(Overlay {
+        state.overlay = Some(ScreenOverlay {
             kind: OverlayKind::Tunnel,
             age: 0.0,
             life: 100.0,
