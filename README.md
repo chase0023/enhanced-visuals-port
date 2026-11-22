@@ -40,7 +40,7 @@ it, as in the original, nothing draws outside a world, and leaving the world cle
 | `tools/gen_assets.py` | Rebuilds the textures, `src/sprites.rs`, the sounds and the icon from the original jar |
 | `shaderpack/native-enhancedvisuals.hshader` | The companion pack: the blur and desaturation over the world's own picture. Also in `assets/enhancedvisuals/`, so the mod installs it into `shaderpacks/` |
 | `shaderpack/src/`, `tools/pack_shader.py` | The pack's source and the script that checks and packs it |
-| `LICENSE`, `NOTICE` | LGPL-3.0-only, as the original |
+| `LICENSE`, `COPYING`, `NOTICE` | LGPL-3.0-only, as the original, with the GPL v3 it incorporates |
 
 ## The blur: real blur, needs the companion pack
 
@@ -77,14 +77,21 @@ to `shaderpacks/native-enhancedvisuals.hshader` the first time the game starts w
 (the name matters: `native-` followed by the mod's id is how Horizon ties a pack to its mod). Then:
 
 1. **Options > Horizon > Shader Packs** → pick **Enhanced Visuals**.
-2. That is it. The toggle **Shader pack draws the blur** is already on (its default follows whether
-   the mod found the pack), so the flat washes stay off and the effect is not counted twice; the
+2. That is it. The toggle **Shader pack draws the blur** is already on — its default follows whether
+   the mod found the pack — so the flat washes stay off and the effect is not counted twice; the
    mod's frame slots carry the radius in pixels and the `Saturation`.
 
 **Without the pack picked** there is no blur at all, and no hazy stand-in either: turn **Shader
 pack draws the blur** off to get the flat haze (a splash's 5 px is a slight veil, a blast's 100 px a
-grey screen). That is also the switch for a pack installed under another name, which the mod cannot
-find on its own; with the pack missing at startup it writes one there and leaves the toggle off.
+grey screen).
+
+The switch is the **manual mode**, and the two are mutually exclusive by default: on means the pack
+draws the blur and this mod draws none of its own, off means the reverse. It cannot be automatic —
+the API reports no selected pack, only that *a* pack is active — so the default is read once from
+whether the pack could be installed into `shaderpacks/`, and after that the player's choice stands.
+That makes it the right switch for a pack installed under another name, or for anyone who would
+rather see the haze; if the write fails at startup the toggle starts off, and a pack picked by hand
+plus a haze turned on would count the effect twice.
 
 The pack passes `horizon-shader check` (shader API 0.2, two passes, `[budget] gpu_ms = 0.8`). It is
 built from `shaderpack/src` by `tools/pack_shader.py`; a mod package allows no other `.toml` than
@@ -212,7 +219,8 @@ Left, and why:
 
 ## Licence
 
-The port is a derivative work of EnhancedVisuals: LGPL-3.0-only. `LICENSE` (the original's) and
-`NOTICE` travel inside the `.hmod`. The original textures are redistributed under the same licence,
+The port is a derivative work of EnhancedVisuals: LGPL-3.0-only. `LICENSE` (the original's),
+`COPYING` (the GNU GPL v3 that the LGPL v3 incorporates by reference, and whose sections 4–5 ask for
+its text to travel with the source) and `NOTICE` travel inside the `.hmod`. The original textures are redistributed under the same licence,
 unmodified apart from being turned into the rotation grids and, for the overlays, downscaled to
 256 px; the sounds are byte-for-byte the original's.

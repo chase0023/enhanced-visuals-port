@@ -1,6 +1,6 @@
 id = "enhancedvisuals"
 name = "EnhancedVisuals"
-version = "1.0.1"
+version = "1.0.2"
 description = "Blood with the original textures when you are hurt, a heartbeat and a red pulse at low health, explosion dust and ringing, and potion, fire, freezing, drowning and starving overlays, plus rain drops."
 authors = ["CreativeMD", "AriaFreeze"]
 credits = "NeoForge version by Sonicjumper. Ported to Horizon by chase0023. \"Feel the pain!\" is the original's."

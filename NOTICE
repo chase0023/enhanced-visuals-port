@@ -11,7 +11,12 @@ https://github.com/CreativeMD/EnhancedVisuals
 https://modrinth.com/mod/enhancedvisuals
 
 Licensed under the GNU Lesser General Public License, version 3 only (LGPL-3.0-only).
-The full licence text is in LICENSE.
+LGPLv3 is written as a set of additional permissions on top of the GNU General Public License,
+version 3, and incorporates that licence's terms (LGPLv3's preamble). Both texts travel with this
+package, as GPLv3 sections 4 and 5 require:
+
+  * LICENSE - the full GNU Lesser General Public License, version 3,
+  * COPYING - the full GNU General Public License, version 3, which the LGPLv3 incorporates.
 
 Redistributed from the original jar under the same licence:
 

@@ -112,7 +112,9 @@ impl Hooks for EnhancedVisuals {
     fn register(&self, registrar: &mut dyn Registrar, context: &RegistrationContext) {
         // The companion pack is written out for the player the first time the game starts with
         // this mod in it (`install_pack`). Its presence picks the toggle's default: with the
-        // pack there, the pack draws the blur and this mod's flat haze must stay off.
+        // pack there, the pack draws the blur and this mod's flat haze must stay off, so the two
+        // are never both on. The API cannot say which pack a player picked, so this switch is
+        // the manual mode: off means the mod draws the haze instead.
         let pack = context.instance_dir().map(install_pack).unwrap_or(false);
         let defaults = Options::default();
         let toggles = [
@@ -121,7 +123,7 @@ impl Hooks for EnhancedVisuals {
             ("pulse", defaults.pulse),
             ("sounds", defaults.sounds),
             ("rain", defaults.rain),
-            ("shader_pack", !pack),
+            ("shader_pack", pack),
             ("death_messages", defaults.death_messages),
         ];
         for (key, default) in toggles {
@@ -243,7 +245,8 @@ impl Hooks for EnhancedVisuals {
         if !event.kind.ends_with("player") {
             return;
         }
-        self.state().push_hit(event.source.damage_type);
+        self.state()
+            .push_hit(event.source.damage_type, event.entity);
     }
 
     /// A blast near the player: dust and the ringing, scaled by its distance and by how much of
@@ -404,8 +407,10 @@ fn read_options(host: &dyn ClientHost) -> Options {
 /// What one client tick reads: the local player's health, position and look, and the weather of
 /// the level they are in.
 fn read_input(host: &dyn ClientHost) -> Input {
+    let player = host.local_player();
     let mut input = Input {
         in_world: false,
+        local_player: player.map(|player| player.entity().id()),
         pos: [0.0; 3],
         health: FALLBACK_MAX_HEALTH,
         max_health: FALLBACK_MAX_HEALTH,
@@ -423,7 +428,7 @@ fn read_input(host: &dyn ClientHost) -> Input {
     if !host.playing() {
         return input;
     }
-    let Some(player) = host.local_player() else {
+    let Some(player) = player else {
         return input;
     };
     // A spectator sees none of it, as in the original.

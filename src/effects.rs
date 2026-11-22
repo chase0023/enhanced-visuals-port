@@ -509,6 +509,29 @@ pub struct PendingHit {
     pub overlay: Option<OverlayKind>,
     /// The starvation tunnel is the one hit the original draws without splashes.
     pub splashes: bool,
+    /// The network id of the player the hit landed on. A hit is only ever the local player's
+    /// splat, and in a hosted world the world's hook sees every player's.
+    pub entity: i32,
+    /// The client tick it was queued on: a hit and the health drop it explains are within
+    /// [`HIT_TTL`] ticks of each other.
+    pub tick: u64,
+}
+
+/// How many ticks a queued hit waits for the drop that explains it. The world's hook runs just
+/// before the tick that sees the new health, so one is enough; two leaves room for a hitch.
+const HIT_TTL: u64 = 2;
+
+impl PendingHit {
+    /// The original's default: a plain drop with no damage type behind it.
+    fn splatter(tick: u64) -> Self {
+        Self {
+            kind: Kind::Splatter,
+            overlay: None,
+            splashes: true,
+            entity: 0,
+            tick,
+        }
+    }
 }
 
 /// The original's `HeartbeatHandler`: below 6 health the buffer counts down each tick, the out
@@ -677,28 +700,40 @@ impl State {
         }
     }
 
-    /// A hit the world announced, waiting for the client tick that sees the health drop. The
-    /// world's entity ids are its own, so the newest waiting hit is the one a drop belongs to.
-    pub fn push_hit(&mut self, damage_type: &str) {
+    /// A hit the world announced, waiting for the client tick that sees the health drop, with
+    /// the player it landed on.
+    pub fn push_hit(&mut self, damage_type: &str, entity: i32) {
         let (kind, overlay) = classify(damage_type);
         if self.hits.len() >= 8 {
             self.hits.remove(0);
         }
+        let tick = self.tick;
         self.hits.push(PendingHit {
             kind,
             overlay,
             splashes: overlay != Some(OverlayKind::Tunnel),
+            entity,
+            tick,
         });
     }
 
-    /// The hit to draw for a health drop: the announced one, else the original's default
-    /// splatter (a client joining someone else's server never hears the world's side).
-    fn take_hit(&mut self) -> PendingHit {
-        self.hits.pop().unwrap_or(PendingHit {
-            kind: Kind::Splatter,
-            overlay: None,
-            splashes: true,
-        })
+    /// The hit to draw for a health drop: the local player's most recent one within [`HIT_TTL`],
+    /// else the original's default splatter (a client joining someone else's server never hears
+    /// the world's side). Another player's hit is never this player's splat, and a hit nobody's
+    /// drop explained is dropped rather than waiting for the next one.
+    fn take_hit(&mut self, local: Option<u32>) -> PendingHit {
+        let now = self.tick;
+        self.hits
+            .retain(|hit| now.saturating_sub(hit.tick) <= HIT_TTL);
+        let index = match local {
+            Some(id) => self.hits.iter().rposition(|hit| hit.entity as u32 == id),
+            // No local player to compare against (a client that has not spawned yet): the
+            // newest waiting hit is the best guess left.
+            None => self.hits.len().checked_sub(1),
+        };
+        index
+            .map(|index| self.hits.remove(index))
+            .unwrap_or_else(|| PendingHit::splatter(now))
     }
 
     pub fn clear(&mut self) {
@@ -717,6 +752,8 @@ impl State {
 pub struct Input {
     /// A world is open and the player is not in a menu-only state.
     pub in_world: bool,
+    /// The local player's network id, to match a queued hit to the player it landed on.
+    pub local_player: Option<u32>,
     pub pos: [f64; 3],
     pub health: f32,
     pub max_health: f32,
@@ -885,7 +922,7 @@ pub fn client_tick(state: &mut State, input: &Input) -> Vec<Sound> {
     if let Some(last) = state.last_health {
         let drop = last - input.health;
         if drop > 0.001 && state.options.blood {
-            let hit = state.take_hit();
+            let hit = state.take_hit(input.local_player);
             spawn_damage(state, hit, drop, input.health);
         }
     }
@@ -1342,6 +1379,7 @@ mod tests {
                 food: 20,
                 eyes_in_water: false,
                 enderman: None,
+                local_player: Some(1),
                 in_world: true,
                 pos: [0.0; 3],
                 health: 16.0,
@@ -1381,6 +1419,7 @@ mod tests {
                     food: 20,
                     eyes_in_water: false,
                     enderman: None,
+                    local_player: Some(1),
                     in_world: true,
                     pos: [0.0; 3],
                     health: 16.0,
@@ -1409,6 +1448,7 @@ mod tests {
                 food: 20,
                 eyes_in_water: false,
                 enderman: None,
+                local_player: Some(1),
                 in_world: false,
                 pos: [0.0; 3],
                 health: 20.0,
@@ -1438,6 +1478,7 @@ mod tests {
                 food: 20,
                 eyes_in_water: false,
                 enderman: None,
+                local_player: Some(1),
                 in_world: true,
                 pos: [0.0; 3],
                 health: 12.0,
@@ -1454,7 +1495,7 @@ mod tests {
     fn the_server_names_the_damage_type_of_the_next_drop() {
         let mut state = state_with(Options::default());
         state.last_health = Some(20.0);
-        state.push_hit("minecraft:arrow");
+        state.push_hit("minecraft:arrow", 1);
         client_tick(
             &mut state,
             &Input {
@@ -1465,6 +1506,7 @@ mod tests {
                 food: 20,
                 eyes_in_water: false,
                 enderman: None,
+                local_player: Some(1),
                 in_world: true,
                 pos: [0.0; 3],
                 health: 17.0,
@@ -1482,6 +1524,56 @@ mod tests {
         assert!(state.hits.is_empty());
     }
 
+    /// A hosted world's hook sees every player's hit; only this player's is this player's splat.
+    #[test]
+    fn another_players_hit_is_not_the_local_players_splat() {
+        let mut state = state_with(Options::default());
+        state.last_health = Some(20.0);
+        // Another player takes an arrow; the local player merely loses a heart to a fall.
+        state.push_hit("minecraft:arrow", 7);
+        client_tick(
+            &mut state,
+            &Input {
+                local_player: Some(1),
+                in_world: true,
+                creative: false,
+                on_ground: false,
+                on_sand: false,
+                sprinting: false,
+                food: 20,
+                eyes_in_water: false,
+                enderman: None,
+                pos: [0.0; 3],
+                health: 19.0,
+                max_health: 20.0,
+                rain: 0.0,
+                rain_visible: false,
+                pitch: 0.0,
+            },
+        );
+        // The fall draws the default splatter, and the other player's arrow stays queued for
+        // nobody: the local player's drop is what asked.
+        assert!(state
+            .visuals
+            .iter()
+            .all(|p| !p.sprite.names[0].contains("/pierce")));
+        assert_eq!(state.hits.len(), 1);
+        assert_eq!(state.hits[0].entity, 7);
+    }
+
+    /// A hit the health never dropped for does not wait around to be the next drop's splat.
+    #[test]
+    fn a_hit_nobody_was_hurt_by_is_dropped() {
+        let mut state = state_with(Options::default());
+        state.push_hit("minecraft:arrow", 1);
+        for _ in 0..5 {
+            state.tick = state.tick.wrapping_add(1);
+        }
+        let hit = state.take_hit(Some(1));
+        assert_eq!(hit.kind, Kind::Splatter);
+        assert!(state.hits.is_empty());
+    }
+
     #[test]
     fn a_drop_without_a_told_hit_is_a_splatter() {
         let mut state = state_with(Options::default());
@@ -1496,6 +1588,7 @@ mod tests {
                 food: 20,
                 eyes_in_water: false,
                 enderman: None,
+                local_player: Some(1),
                 in_world: true,
                 pos: [0.0; 3],
                 health: 18.0,
@@ -1742,6 +1835,7 @@ mod tests {
                     food: 20,
                     eyes_in_water: false,
                     enderman: None,
+                    local_player: Some(1),
                     in_world: true,
                     pos: [0.0; 3],
                     health: 20.0,
@@ -1793,6 +1887,7 @@ mod tests {
             food: 20,
             eyes_in_water: false,
             enderman: None,
+            local_player: Some(1),
             in_world: true,
             pos: [0.0; 3],
             health: 0.0,
@@ -1819,6 +1914,7 @@ mod tests {
             food: 20,
             eyes_in_water: false,
             enderman: None,
+            local_player: Some(1),
             in_world: true,
             pos: [0.0; 3],
             health: 20.0,
@@ -1860,6 +1956,7 @@ mod tests {
             food: 20,
             eyes_in_water: false,
             enderman: None,
+            local_player: Some(1),
             in_world: true,
             pos: [0.0; 3],
             health: 2.0,
@@ -1900,6 +1997,7 @@ mod tests {
                     food: 20,
                     eyes_in_water: false,
                     enderman: None,
+                    local_player: Some(1),
                     in_world: true,
                     pos: [0.0; 3],
                     health: 20.0,
@@ -1998,6 +2096,7 @@ mod tests {
                 food: 20,
                 eyes_in_water: false,
                 enderman: None,
+                local_player: Some(1),
                 in_world: true,
                 pos: [0.0; 3],
                 health: 0.5,
